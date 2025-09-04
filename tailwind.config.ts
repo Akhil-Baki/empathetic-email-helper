@@ -26,7 +26,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					glow: 'hsl(var(--primary-glow))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -52,6 +53,33 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
+				urgent: {
+					DEFAULT: 'hsl(var(--urgent))',
+					foreground: 'hsl(var(--urgent-foreground))'
+				},
+				high: {
+					DEFAULT: 'hsl(var(--high))',
+					foreground: 'hsl(var(--high-foreground))'
+				},
+				medium: {
+					DEFAULT: 'hsl(var(--medium))',
+					foreground: 'hsl(var(--medium-foreground))'
+				},
+				low: {
+					DEFAULT: 'hsl(var(--low))',
+					foreground: 'hsl(var(--low-foreground))'
+				},
+				positive: 'hsl(var(--positive))',
+				neutral: 'hsl(var(--neutral))',
+				negative: 'hsl(var(--negative))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
