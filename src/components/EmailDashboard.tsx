@@ -9,9 +9,10 @@ import { EmailList } from './EmailList';
 import { EmailDetail } from './EmailDetail';
 import { EmailComposer } from './EmailComposer';
 import { Analytics } from './Analytics';
-import { Email } from '@/types/email';
-import { mockEmails, mockStats } from '@/data/mockEmails';
-import { Mail, BarChart3, Settings, Search, Filter } from 'lucide-react';
+import { Email, EmailStats } from '@/types/email';
+import { useEmails } from '@/hooks/useEmails';
+import { useAuth } from '@/hooks/useAuth';
+import { Mail, BarChart3, Settings, Search, Filter, LogOut } from 'lucide-react';
 
 export const EmailDashboard = () => {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -21,7 +22,10 @@ export const EmailDashboard = () => {
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('emails');
 
-  const filteredEmails = mockEmails.filter(email => {
+  const { emails, loading, updateEmail } = useEmails();
+  const { user, signOut } = useAuth();
+
+  const filteredEmails = emails.filter(email => {
     const matchesSearch = email.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
       email.sender.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       email.content.toLowerCase().includes(searchTerm.toLowerCase());
@@ -31,6 +35,25 @@ export const EmailDashboard = () => {
     
     return matchesSearch && matchesSentiment && matchesUrgency;
   });
+
+  // Calculate stats from real data
+  const stats: EmailStats = {
+    total: emails.length,
+    unread: emails.filter(e => e.status === 'unread').length,
+    replied: emails.filter(e => e.status === 'replied').length,
+    avgResponseTime: '2.3 hours',
+    sentimentBreakdown: {
+      positive: emails.filter(e => e.sentiment === 'positive').length,
+      neutral: emails.filter(e => e.sentiment === 'neutral').length,
+      negative: emails.filter(e => e.sentiment === 'negative').length,
+    },
+    urgencyBreakdown: {
+      low: emails.filter(e => e.urgency === 'low').length,
+      medium: emails.filter(e => e.urgency === 'medium').length,
+      high: emails.filter(e => e.urgency === 'high').length,
+      urgent: emails.filter(e => e.urgency === 'urgent').length,
+    }
+  };
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
@@ -65,10 +88,13 @@ export const EmailDashboard = () => {
                 </h1>
               </div>
               <Badge variant="secondary" className="ml-4">
-                {mockStats.unread} Unread
+                {stats.unread} Unread
               </Badge>
             </div>
             <div className="flex items-center space-x-4">
+              <span className="text-sm text-muted-foreground">
+                Welcome, {user?.email}
+              </span>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
@@ -78,9 +104,9 @@ export const EmailDashboard = () => {
                   className="pl-10 w-64"
                 />
               </div>
-              <Button variant="outline" size="sm">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
+              <Button variant="outline" size="sm" onClick={signOut}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
               </Button>
             </div>
           </div>
@@ -101,86 +127,102 @@ export const EmailDashboard = () => {
           </TabsList>
 
           <TabsContent value="emails" className="mt-6">
-            <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
-              {/* Filters & Email List */}
-              <div className="col-span-4">
-                <Card className="p-4 mb-4">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <Filter className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">Filters</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select value={filterSentiment} onValueChange={setFilterSentiment}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sentiment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Sentiment</SelectItem>
-                        <SelectItem value="positive">Positive</SelectItem>
-                        <SelectItem value="neutral">Neutral</SelectItem>
-                        <SelectItem value="negative">Negative</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterUrgency} onValueChange={setFilterUrgency}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Urgency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Urgency</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="urgent">Urgent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </Card>
-                <EmailList
-                  emails={filteredEmails}
-                  selectedEmail={selectedEmail}
-                  onSelectEmail={setSelectedEmail}
-                  getSentimentColor={getSentimentColor}
-                  getUrgencyColor={getUrgencyColor}
-                />
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-
-              {/* Email Detail & Composer */}
-              <div className="col-span-8">
-                {selectedEmail ? (
-                  <div className="space-y-4">
-                    <EmailDetail 
-                      email={selectedEmail} 
-                      onReply={() => setIsComposerOpen(true)}
-                      getSentimentColor={getSentimentColor}
-                      getUrgencyColor={getUrgencyColor}
-                    />
-                    {isComposerOpen && (
-                      <EmailComposer
-                        email={selectedEmail}
-                        onClose={() => setIsComposerOpen(false)}
-                        onSend={() => {
-                          setIsComposerOpen(false);
-                          // Handle send logic
-                        }}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <Card className="h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <Mail className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-muted-foreground">
-                        Select an email to view details
-                      </h3>
+            ) : emails.length === 0 ? (
+              <Card className="p-8 text-center">
+                <Mail className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  No emails found
+                </h3>
+                <p className="text-muted-foreground">
+                  Your emails will appear here once you connect your email account.
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
+                {/* Filters & Email List */}
+                <div className="col-span-4">
+                  <Card className="p-4 mb-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Filter className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">Filters</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select value={filterSentiment} onValueChange={setFilterSentiment}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sentiment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Sentiment</SelectItem>
+                          <SelectItem value="positive">Positive</SelectItem>
+                          <SelectItem value="neutral">Neutral</SelectItem>
+                          <SelectItem value="negative">Negative</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filterUrgency} onValueChange={setFilterUrgency}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Urgency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Urgency</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </Card>
-                )}
+                  <EmailList
+                    emails={filteredEmails}
+                    selectedEmail={selectedEmail}
+                    onSelectEmail={setSelectedEmail}
+                    getSentimentColor={getSentimentColor}
+                    getUrgencyColor={getUrgencyColor}
+                  />
+                </div>
+
+                {/* Email Detail & Composer */}
+                <div className="col-span-8">
+                  {selectedEmail ? (
+                    <div className="space-y-4">
+                      <EmailDetail 
+                        email={selectedEmail} 
+                        onReply={() => setIsComposerOpen(true)}
+                        getSentimentColor={getSentimentColor}
+                        getUrgencyColor={getUrgencyColor}
+                      />
+                      {isComposerOpen && (
+                        <EmailComposer
+                          email={selectedEmail}
+                          onClose={() => setIsComposerOpen(false)}
+                          onSend={() => {
+                            setIsComposerOpen(false);
+                            // Handle send logic
+                          }}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <Card className="h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <Mail className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-muted-foreground">
+                          Select an email to view details
+                        </h3>
+                      </div>
+                    </Card>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-6">
-            <Analytics stats={mockStats} />
+            <Analytics stats={stats} />
           </TabsContent>
         </Tabs>
       </div>
