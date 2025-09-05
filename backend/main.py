@@ -25,7 +25,7 @@ app = FastAPI()
 # Enable CORS so frontend (React/Vite/Next.js) can talk to backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],           # In production, replace "*" with your frontend URL
+    allow_origins=["*"],  # Allow all for development; restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,3 +84,6 @@ async def generate_reply(request: Request):
     # Return the reply in JSON
     # ----------------------------------------------------------------
     return {"reply": reply_text}
+
+
+
