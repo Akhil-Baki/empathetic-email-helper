@@ -2,90 +2,85 @@
 
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from openai import OpenAI
 
 # -------------------------------------------------------------------
-# Load environment variables from .env file
+# Load environment variables
 # -------------------------------------------------------------------
 load_dotenv()
-
-# Get the API key from .env
 openai_api_key = os.getenv("OPENAI_API_KEY")
+
+if not openai_api_key:
+    raise RuntimeError("OPENAI_API_KEY is missing. Set it in your environment.")
 
 # Initialize OpenAI client
 client = OpenAI(api_key=openai_api_key)
 
 # -------------------------------------------------------------------
-# Initialize FastAPI app
+# FastAPI app setup
 # -------------------------------------------------------------------
-app = FastAPI()
+app = FastAPI(title="Empathetic Email Helper API")
 
-# Enable CORS so frontend (React/Vite/Next.js) can talk to backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all for development; restrict in production
+    allow_origins=["*"],  # Allow all origins (restrict in production)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # -------------------------------------------------------------------
-# Root endpoint - just to test backend is running
+# Pydantic models
+# -------------------------------------------------------------------
+class ReplyRequest(BaseModel):
+    body: str
+
+class ReplyResponse(BaseModel):
+    reply: str
+
+# -------------------------------------------------------------------
+# Root endpoint (health check)
 # -------------------------------------------------------------------
 @app.get("/")
-def root():
-    return {"message": "Backend is running successfully!"}
+async def root():
+    return {"message": "Backend is running successfully 🚀"}
 
 # -------------------------------------------------------------------
-# Reply endpoint - generates empathetic reply using OpenAI API
+# Reply endpoint (AI-generated empathetic reply)
 # -------------------------------------------------------------------
-@app.post("/reply")
-async def generate_reply(request: Request):
-    """
-    This endpoint accepts an email body (JSON) and returns an
-    empathetic AI-generated reply using OpenAI GPT model.
-    """
+@app.post("/reply", response_model=ReplyResponse)
+async def generate_reply(request: ReplyRequest):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",   # fast + efficient model
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful and empathetic customer support assistant. "
+                        "Always respond in a friendly, professional, and understanding tone. "
+                        "If the customer is upset, show empathy and reassure them."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": request.body
+                }
+            ]
+        )
 
-    # Parse request body
-    data = await request.json()
-    email_body = data.get("body")
+        reply_text = response.choices[0].message.content
+        return ReplyResponse(reply=reply_text)
 
-    # Check if body exists
-    if not email_body:
-        return {"detail": "Email body is required"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # ----------------------------------------------------------------
-    # Call OpenAI API to generate the reply
-    # ----------------------------------------------------------------
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",   # Fast + cost-efficient model
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful and empathetic customer support assistant. "
-                    "Always respond in a friendly, professional, and understanding tone. "
-                    "If the customer is upset, show empathy and reassure them."
-                )
-            },
-            {
-                "role": "user",
-                "content": email_body
-            }
-        ]
-    )
-
-    # Extract reply text from OpenAI response
-    reply_text = response.choices[0].message.content
-
-    # ----------------------------------------------------------------
-    # Return the reply in JSON
-    # ----------------------------------------------------------------
-    return {"reply": reply_text}
-
-# Example mock data for demonstration
+# -------------------------------------------------------------------
+# Mock emails (demo only)
+# -------------------------------------------------------------------
 MOCK_EMAILS = [
     {
         "id": "1",
@@ -101,20 +96,12 @@ MOCK_EMAILS = [
         "contacts": ["Sarah Johnson", "Tech Corp"],
         "requests": ["Website restoration", "Technical support"],
         "ai_draft": "Dear Sarah, ..."
-    },
-    # ...add more mock emails as needed...
+    }
 ]
 
 @app.get("/emails/{email_id}")
 async def get_email_details(email_id: str):
-    """
-    Returns details for a specific email by ID.
-    Replace this with a real database query in production.
-    """
     for email in MOCK_EMAILS:
         if email["id"] == email_id:
             return email
-    return {"detail": "Email not found"}, 404
-
-
-
+    raise HTTPException(status_code=404, detail="Email not found")
