@@ -85,5 +85,36 @@ async def generate_reply(request: Request):
     # ----------------------------------------------------------------
     return {"reply": reply_text}
 
+# Example mock data for demonstration
+MOCK_EMAILS = [
+    {
+        "id": "1",
+        "subject": "URGENT: Website completely down, losing customers!",
+        "sender_name": "Sarah Johnson",
+        "sender_email": "sarah.j@techcorp.com",
+        "content": "Hi there, our entire website has been down for over 2 hours now...",
+        "received_at": "2024-01-15T14:30:00Z",
+        "sentiment": "negative",
+        "urgency": "urgent",
+        "category": "technical",
+        "status": "unread",
+        "contacts": ["Sarah Johnson", "Tech Corp"],
+        "requests": ["Website restoration", "Technical support"],
+        "ai_draft": "Dear Sarah, ..."
+    },
+    # ...add more mock emails as needed...
+]
+
+@app.get("/emails/{email_id}")
+async def get_email_details(email_id: str):
+    """
+    Returns details for a specific email by ID.
+    Replace this with a real database query in production.
+    """
+    for email in MOCK_EMAILS:
+        if email["id"] == email_id:
+            return email
+    return {"detail": "Email not found"}, 404
+
 
 
